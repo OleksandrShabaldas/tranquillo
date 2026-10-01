@@ -71,6 +71,7 @@ class Session {
     required this.tags,
     required this.voices,
     required this.groupId,
+    this.chapterId,
   });
 
   final String id;
@@ -79,6 +80,9 @@ class Session {
   final List<String> tags;
   final List<Voice> voices;
   final String groupId;
+
+  /// Id of the chapter the session is in, when its group has chapters.
+  final String? chapterId;
 
   factory Session.fromJson(Map<String, dynamic> json, String groupId) {
     final id = json['id'] as String? ?? '';
@@ -89,8 +93,19 @@ class Session {
       tags: _strings(json['tags']),
       voices: _list(json['voices']).map((v) => Voice.fromJson(v, id)).where((v) => v.parts.isNotEmpty).toList(),
       groupId: groupId,
+      chapterId: json['chapter'] as String?,
     );
   }
+}
+
+/// A smaller group of sessions inside a group, e.g. "First Steps".
+class Chapter {
+  Chapter({required this.id, required this.name, required this.description, required this.sessions});
+
+  final String id;
+  final String name;
+  final String description;
+  final List<Session> sessions;
 }
 
 class Group {
@@ -101,6 +116,7 @@ class Group {
     required this.tags,
     required this.color,
     required this.sessions,
+    this.chapters = const [],
   });
 
   final String id;
@@ -108,17 +124,39 @@ class Group {
   final String description;
   final List<String> tags;
   final Color? color;
+
+  /// All sessions in the order they're shown, chapter after chapter when the group has chapters.
   final List<Session> sessions;
+
+  /// The group's chapters that have sessions, in order. Empty when the group isn't split into chapters.
+  final List<Chapter> chapters;
+
+  /// Sessions that aren't in one of [chapters] (all of them when the group has no chapters).
+  late final List<Session> unchaptered = [
+    for (final s in sessions)
+      if (!chapters.any((c) => c.id == s.chapterId)) s,
+  ];
 
   factory Group.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String? ?? '';
+    final sessions = _list(json['sessions']).map((s) => Session.fromJson(s, id)).where((s) => s.voices.isNotEmpty).toList();
     return Group(
       id: id,
       name: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
       tags: _strings(json['tags']),
       color: _color(json['color']),
-      sessions: _list(json['sessions']).map((s) => Session.fromJson(s, id)).where((s) => s.voices.isNotEmpty).toList(),
+      sessions: sessions,
+      chapters: [
+        for (final c in _list(json['chapters']))
+          if (c['id'] is String)
+            Chapter(
+              id: c['id'] as String,
+              name: c['name'] as String? ?? '',
+              description: c['description'] as String? ?? '',
+              sessions: sessions.where((s) => s.chapterId == c['id']).toList(),
+            ),
+      ].where((c) => c.sessions.isNotEmpty).toList(),
     );
   }
 }

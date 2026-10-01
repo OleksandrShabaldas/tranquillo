@@ -71,12 +71,53 @@ class GroupScreen extends StatelessWidget {
               ),
             ),
           SliverList.list(children: [
-            for (final s in group.sessions) SessionTile(session: s, group: group),
+            for (final chapter in group.chapters) ...[
+              _ChapterHeader(chapter: chapter, color: color),
+              for (final s in chapter.sessions) SessionTile(session: s, group: group),
+            ],
+            for (final s in group.unchaptered) SessionTile(session: s, group: group),
             SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
           ]),
         ],
       ),
       bottomNavigationBar: const MiniPlayer(),
+    );
+  }
+}
+
+class _ChapterHeader extends StatelessWidget {
+  const _ChapterHeader({required this.chapter, required this.color});
+
+  final Chapter chapter;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final count = chapter.sessions.length;
+    return Semantics(
+      header: true,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Expanded(child: Text(chapter.name, style: text.titleMedium?.copyWith(color: color, fontWeight: FontWeight.w600))),
+                Text('$count session${count == 1 ? '' : 's'}', style: text.bodySmall?.copyWith(color: muted)),
+              ],
+            ),
+            if (chapter.description.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(chapter.description, style: text.bodyMedium?.copyWith(color: muted)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -74,6 +74,46 @@ void main() {
     expect(catalog.sessionsTagged('breathing').length, 2);
   });
 
+  test('groups sessions into chapters', () {
+    final c = Catalog.fromJson({
+      'groups': [
+        {
+          'id': 'g',
+          'chapters': [
+            {'id': 'start', 'name': 'First Steps', 'description': 'Begin here.'},
+            {'id': 'empty', 'name': 'No sessions'},
+            {'name': 'No id'},
+          ],
+          'sessions': [
+            for (final (id, chapter) in [('a', 'start'), ('b', 'start'), ('c', 'later'), ('d', null)])
+              {
+                'id': 'g/$id',
+                'chapter': chapter,
+                'voices': [
+                  {'id': 'v', 'parts': [{'start': 0, 'end': 1}]},
+                ],
+              },
+          ],
+        },
+        {
+          'id': 'plain',
+          'sessions': [
+            {'id': 'plain/x', 'voices': [{'id': 'v', 'parts': [{'start': 0, 'end': 1}]}]},
+          ],
+        },
+      ],
+    });
+    final g = c.groupById('g')!;
+    expect(g.chapters.map((ch) => ch.name), ['First Steps']);
+    expect(g.chapters.single.description, 'Begin here.');
+    expect(g.chapters.single.sessions.map((s) => s.id), ['g/a', 'g/b']);
+    expect(g.unchaptered.map((s) => s.id), ['g/c', 'g/d']);
+    expect(g.sessions.length, 4);
+    final plain = c.groupById('plain')!;
+    expect(plain.chapters, isEmpty);
+    expect(plain.unchaptered.map((s) => s.id), ['plain/x']);
+  });
+
   test('tolerates missing or malformed fields', () {
     final c = Catalog.fromJson({
       'groups': [
